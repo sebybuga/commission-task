@@ -1,0 +1,8 @@
+{
+  "commission_rate_deposit": "0.0003",
+  "commission_rate_withdraw_private": "0.003",
+  "commission_rate_withdraw_business": "0.005",
+  "free_withdraw_limit": "1000",
+  "free_withdraw_count": "3",
+  "CURRENCY_DEFALUT": "EUR"
+}
