@@ -4,5 +4,5 @@
   "commission_rate_withdraw_business": "0.005",
   "free_withdraw_limit": "1000",
   "free_withdraw_count": "3",
-  "CURRENCY_DEFALUT": "EUR"
+  "currency_default": "EUR"
 }
