@@ -16,7 +16,7 @@ class JsonDataProvider implements DataProviderInterface
     public function getData(): array
     {
         
-        $json = file_get_contents($this->filePath);        
+        $json = file_get_contents($this->filePath);
         return json_decode($json, true);
     }
 }

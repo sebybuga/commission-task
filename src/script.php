@@ -8,6 +8,8 @@ use Homework\CommissionTask\Config\JsonDataProvider;
 use Homework\CommissionTask\Service\CurrencyService;
 use Homework\CommissionTask\Repository\OperationRepository;
 use Homework\CommissionTask\Service\OperationService;
+use Homework\CommissionTask\Config\ApiConfig;
+
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
@@ -44,8 +46,10 @@ while (($data = fgetcsv($handle)) !== false) {
     $currencyConfig = new CurrencyConfig($currencyProvider);
     $commissionProvider = new JsonDataProvider(__DIR__ . '/../config/commissions.json');
     $commissionConfig = new CommissionConfig($commissionProvider);
+    $apiProvider = new JsonDataProvider(__DIR__ . '/../config/api.json');
+    $apiConfig = new ApiConfig($apiProvider);
 
-    $currencyService = new CurrencyService($currencyConfig);
+    $currencyService = new CurrencyService($currencyConfig, $apiConfig);
     $operationService = new OperationService($repositoryOperation, $commissionConfig, $currencyService);
 
     // Validate input data
