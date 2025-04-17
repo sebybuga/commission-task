@@ -6,6 +6,7 @@ use DateTime;
 
 
 class OperationEntity {
+    public $id;
     public $date;
     public $userId;
     public $userType;
@@ -15,12 +16,19 @@ class OperationEntity {
 
     public function __construct(array $data) {
         [$date, $userId, $userType, $opType, $amount, $currency] = $data;
+        $this->id = $this->generateBigRandomId();
         $this->date = new DateTime($date);
         $this->userId = (int)$userId;
         $this->userType = $userType;
         $this->operationType = $opType;
         $this->amount = (float)$amount;
         $this->currency = $currency;
+    }
+
+    private function generateBigRandomId(): string
+    {
+        return bin2hex(random_bytes(8)); // 16-char hex = 64-bit
+        // For 128-bit: bin2hex(random_bytes(16));
     }
 
     public function getDate(): DateTime {

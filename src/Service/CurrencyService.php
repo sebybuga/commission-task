@@ -5,42 +5,75 @@ declare(strict_types=1);
 namespace Homework\CommissionTask\Service;
 
 use Homework\CommissionTask\Config\CurrencyConfig;
+use Homework\CommissionTask\Exception\UndefinedExchangeRateException;
 
 
 class CurrencyService
 {
     private $currencyConfig;
+
+    private $exchangeRates = [
+        'EUR' => [
+            'USD' => 1.1497,
+            'JPY' => 129.53,
+        ],
+        'USD' => [
+            'EUR' => 1 / 1.1497,
+        ],
+        'JPY' => [
+            'EUR' => 1 / 129.53,
+        ],
+    ];
+
     public function __construct(CurrencyConfig $currencyConfig)
     {
         $this->currencyConfig = $currencyConfig;
     }
+    
 
-    public function roundUpToCurrency(float $amount, string $currency): float
+    public function convertCurrency(float $amount, string $currencyOrigin, string $currencyToConvert): float
     {
+        $currencyOrigin = strtoupper($currencyOrigin);
+        $currencyToConvert = strtoupper($currencyToConvert);
 
-        $decimalPlaces = $this->currencyConfig->getPrecision($currency);
-        $multiplier = 10 ** $decimalPlaces;
-        $scaled = $amount * $multiplier;
-        $rounded = ceil($scaled);
-
-        return $rounded / $multiplier;
-    }
-
-    public function convertCurrency(float $amount, string $currency): float
-    {
-        // TODO Example conversion rates (you should replace this with actual logic or API calls)
-        $conversionRates = [
-            'EUR' => 1.0,
-            'USD' => 1.1,
-            'JPY' => 130.0,
-        ];
-
-        if (!isset($conversionRates[$currency])) {
-            throw new \InvalidArgumentException("Unsupported currency: $currency");
+        if ($currencyOrigin === $currencyToConvert) {
+            return $this->roundUpToCurrency($amount, $currencyToConvert);
         }
 
-        return $amount / $conversionRates[$currency];
+        if (!isset($this->exchangeRates[$currencyOrigin][$currencyToConvert])) {
+            // Try via EUR
+            if (isset($this->exchangeRates[$currencyOrigin]['EUR']) && isset($this->exchangeRates['EUR'][$currencyToConvert])) {
+                $eurAmount = $amount * $this->exchangeRates[$currencyOrigin]['EUR'];
+                $converted = $eurAmount * $this->exchangeRates['EUR'][$currencyToConvert];
+                return $this->roundUpToCurrency($converted, $currencyToConvert);
+            }
 
+            throw new UndefinedExchangeRateException($currencyOrigin, $currencyToConvert);
+        }
+
+        $converted = $amount * $this->exchangeRates[$currencyOrigin][$currencyToConvert];
+        return $this->roundUpToCurrency($converted, $currencyToConvert);
+    }
+
+    public function roundUpToCurrency(float $value, string $currency): float
+    {
+        // Define decimal places per currency
+        switch (strtoupper($currency)) {
+            case 'JPY':                
+                $decimals = 0;
+                break;
+            case 'USD':
+            case 'EUR':
+                $decimals = 2;
+                break;
+            default:
+                $decimals = 2; // fallback default
+        }
+        
+        $factor = pow(10, $decimals);
+
+        // Round up to the nearest decimal place
+        return ceil($value * $factor) / $factor;
     }
 
 }

@@ -5,36 +5,42 @@ declare(strict_types=1);
 namespace Homework\CommissionTask\Service;
 
 use Homework\CommissionTask\Config\CommissionConfig;
-use Homework\CommissionTask\Config\CurrencyConfig;
+
 use Homework\CommissionTask\Model\OperationEntity;
 
 use Homework\CommissionTask\Exception\InvalidUserTypeException;
 
+
 class CommissionCalculatorService
 {
-    private $commissionValue;
+    private $operationEntity;
     private $currencyService;
     private $commissionConfig;
+    private $operationService;
 
     public function __construct(
         OperationEntity $operationEntity,
         CommissionConfig $commissionConfig,
-        CurrencyConfig $currencyConfig
-    ) {
-        $this->commissionConfig = $commissionConfig;
-        $this->currencyService = new CurrencyService($currencyConfig);
-        $this->commissionValue = $this->calculateCommission($operationEntity);
+        CurrencyService $currencyService,
+        OperationService $operationService
 
+
+    ) {
+        $this->operationEntity = $operationEntity;
+        $this->commissionConfig = $commissionConfig;
+        $this->currencyService = $currencyService;
+        $this->operationService = $operationService;
     }
 
 
     public function getCommissionValue(): float
     {
-        return $this->commissionValue;
+        return $this->calculateCommission($this->operationEntity);
     }
 
     private function calculateCommission(OperationEntity $operationEntity)
     {
+
         $amount = $operationEntity->getAmount();
         $operationType = $operationEntity->getOperationType();
         $userType = $operationEntity->getUserType();
@@ -78,25 +84,56 @@ class CommissionCalculatorService
     private function calculatePrivateWithdrawCommission(float $amount, string $currency): float
     {
         $taxableAmount = $this->getTaxableAmount($amount, $currency);
+
+
         $commissionValue = $taxableAmount * $this->commissionConfig->getCommissionRateWithdrawPrivate();
+
+
+
         return $this->currencyService->roundUpToCurrency($commissionValue, $currency);
     }
 
     private function getTaxableAmount(float $amount, string $currency): float
     {
 
-        $withdrawalWeekCount = 0; //TODO get data from history
+        $startDate = clone $this->operationEntity->getDate();
+        $endDate = clone $startDate;
 
-        if ($withdrawalWeekCount > $this->commissionConfig->getFreeWithdrawCount()) {
+        $weekHistoryData = $this->operationService->getOperationsByDate(
+            $this->operationEntity->getUserId(),
+            $startDate->modify('monday this week'),
+            $endDate->modify('sunday this week'),
+            $this->operationEntity->getOperationType()
+        );
+
+        $withdrawWeekCount = $weekHistoryData['operationCount'];
+        $amountCurrencyDefault = $currency === $this->commissionConfig->getCurrencyDefault() ?
+            $amount :
+            $this->currencyService->convertCurrency($amount, $currency, $this->commissionConfig->getCurrencyDefault());
+
+        if ($withdrawWeekCount > $this->commissionConfig->getFreeWithdrawCount()) {
             return $amount;
         }
 
-        $taxableAmount = 0 + $amount;  //TODO get history data and replace 0
-        $taxableAmountEUR = $this->currencyService->convertCurrency($taxableAmount, 'EUR');
+        $currencyDefault = $this->commissionConfig->getCurrencyDefault();
 
-        if ($taxableAmountEUR > $this->commissionConfig->getFreeWithdrawLimit()) {
-            $remainingSumEUR = $taxableAmountEUR - $this->commissionConfig->getFreeWithdrawLimit();
-            return $this->currencyService->convertCurrency($remainingSumEUR, $currency);
+        $weekHistoryTotalAmountCurrencyDefault = $this->currencyService->convertCurrency(
+            $weekHistoryData['totalAmount'],
+            $currency,
+            $currencyDefault
+        );
+
+        $totalAmountCurrencyDefault = $weekHistoryTotalAmountCurrencyDefault + $amountCurrencyDefault;
+        
+        //check if the total amount in default currency is greater than the free withdraw limit
+        if ($totalAmountCurrencyDefault > $this->commissionConfig->getFreeWithdrawLimit()) {
+            return $weekHistoryTotalAmountCurrencyDefault > $this->commissionConfig->getFreeWithdrawLimit() ?
+                $amount :
+                $this->currencyService->convertCurrency(
+                    $totalAmountCurrencyDefault - $this->commissionConfig->getFreeWithdrawLimit(),
+                    $currencyDefault,
+                    $currency
+                );
         }
 
         return 0;

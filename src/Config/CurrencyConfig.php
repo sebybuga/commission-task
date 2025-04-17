@@ -3,17 +3,12 @@ namespace Homework\CommissionTask\Config;
 
 class CurrencyConfig
 {
-    const CONFIG_FILE = 'currencies.json';
     private $currencyMap;
 
-    public function __construct()
+    public function __construct(DataProviderInterface $provider)
     {
-        $this->currencyMap = json_decode(
-            file_get_contents(
-                __DIR__ . DIRECTORY_SEPARATOR . self::CONFIG_FILE
-            ),
-            true
-        );
+        $this->currencyMap = $provider->getData();
+
     }
 
     public function getPrecision(string $currency): int
@@ -24,10 +19,5 @@ class CurrencyConfig
     public function getCurrencies(): array
     {
         return array_keys($this->currencyMap);
-    }
-
-    public function isCurrencySupported(string $currency): bool
-    {
-        return isset($this->currencyMap[$currency]);
     }
 }

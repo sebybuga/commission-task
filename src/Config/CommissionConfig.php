@@ -3,24 +3,19 @@ namespace Homework\CommissionTask\Config;
 
 class CommissionConfig
 {
-    const CONFIG_FILE = 'commission.json';
+    
     private $commissionMap;
 
 
-    public function __construct()
+    public function __construct(DataProviderInterface $provider)
     {
-        $this->commissionMap = json_decode(
-            file_get_contents(
-                __DIR__ . DIRECTORY_SEPARATOR . self::CONFIG_FILE
-            ),
-            true
-        );
+        $this->commissionMap = $provider->getData();
     }
 
 
     public function getCommissionRateDeposit(): float
     {
-        return $this->configData['commission_rate_deposit'] ?? 0.0; // Default value if not set
+        return $this->commissionMap['commission_rate_deposit'] ?? 0.0; // Default value if not set
     }
     public function getCommissionRateWithdrawPrivate(): float
     {
@@ -40,12 +35,11 @@ class CommissionConfig
     {
         return (int) $this->commissionMap['free_withdraw_count'] ?? 0;
     }
+    
     public function getCurrencyDefault(): string
     {
-        return (float) ($this->commissionMap['currency_default'] ?? 'EUR');
+        return $this->currencyMap['currency_default'] ?? 'EUR';
     }
-
-
 
 
 
