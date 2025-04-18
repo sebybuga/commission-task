@@ -86,7 +86,7 @@ class CommissionCalculatorService
     {
         $taxableAmount = $this->getTaxableAmount($amount, $currency);
         $commissionValue = bcmul($taxableAmount, $this->commissionConfig->getCommissionRateWithdrawPrivate(), 4);
-        
+
         return $this->currencyService->roundUpToCurrency($commissionValue, $currency);
     }
 
@@ -102,12 +102,12 @@ class CommissionCalculatorService
             $endDate->modify('sunday this week'),
             $this->operationEntity->getOperationType()
         );
-        
+
         $withdrawWeekCount = $weekHistoryData['operationCount'];
         $amountCurrencyDefault = ($currency === $this->commissionConfig->getCurrencyDefault()) ?
             $amount :
             $this->currencyService->convertCurrency($amount, $currency, $this->commissionConfig->getCurrencyDefault());
-            
+
         if ($withdrawWeekCount > $this->commissionConfig->getFreeWithdrawCount()) {
             return $amount;
         }
