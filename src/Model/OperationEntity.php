@@ -21,7 +21,7 @@ class OperationEntity {
         $this->userId = (int)$userId;
         $this->userType = $userType;
         $this->operationType = $opType;
-        $this->amount = (float)$amount;
+        $this->amount = $amount;
         $this->currency = $currency;
     }
 
@@ -63,11 +63,11 @@ class OperationEntity {
         $this->operationType = $operationType;
     }
 
-    public function getAmount(): float {
+    public function getAmount(): string {
         return $this->amount;
     }
 
-    public function setAmount(float $amount) {
+    public function setAmount(string $amount) {
         $this->amount = $amount;
     }
 

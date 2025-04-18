@@ -26,40 +26,49 @@ class CurrencyService
      * @return string
      */
     private function buildExchangeRateUrl(string $baseUrl, string $accessKey, array $currencies): string
-    {   
+    {
         $baseUrl .= date('Y-m-d');
         $currencyList = implode(',', $currencies);
         return sprintf('%s?access_key=%s&symbols=%s', $baseUrl, $accessKey, $currencyList);
     }
-    
-    private $exchangeRates;
-    /* = [
-        'EUR' => [
-            'USD' => 1.1497,
-            'JPY' => 129.53,
-        ],
-        'USD' => [
-            'EUR' => 1 / 1.1497,
-        ],
-        'JPY' => [
-            'EUR' => 1 / 129.53,
-        ],
-    ];*/
 
-    public function __construct(CurrencyConfig $currencyConfig, ApiConfig $apiConfig)
+    private $exchangeRates;
+
+
+    public function __construct(CurrencyConfig $currencyConfig, ApiConfig $apiConfig, bool $useApi = true)
     {
+
         $this->currencyConfig = $currencyConfig;
         $this->apiUrl = $this->buildExchangeRateUrl(
-            $apiConfig->getExchangeApiUrl(), 
-            $apiConfig->getAccessKey(), 
-            $currencyConfig->getCurrencies() 
+            $apiConfig->getExchangeApiUrl(),
+            $apiConfig->getAccessKey(),
+            $currencyConfig->getCurrencies()
         );
-        $this->loadExchangeRates();
+
+        $this->loadExchangeRates($useApi);
+
     }
-    
-    private function loadExchangeRates() 
+
+    private function loadExchangeRates(bool $useApi)
     {
-        
+        if (!$useApi) {
+            // Mock exchange rates for testing purposes
+            $this->exchangeRates = [
+                'EUR' => [
+                    'USD' => 1.1497,
+                    'JPY' => 129.53,
+                ],
+                'USD' => [
+                    'EUR' => 1 / 1.1497,
+                ],
+                'JPY' => [
+                    'EUR' => 1 / 129.53,
+                ],
+            ];
+
+            return;
+        }
+        // Load exchange rates from API
         $response = @file_get_contents($this->apiUrl);
         if (!$response) {
             throw new ExchangeRateLoadException();
@@ -74,13 +83,13 @@ class CurrencyService
         $base = $data['base']; // 'EUR' as base currency
         $this->exchangeRates[$base] = $data['rates'];
 
-        
+
         foreach ($data['rates'] as $currency => $rate) {
             $this->exchangeRates[$currency][$base] = 1 / $rate;
         }
     }
 
-    public function convertCurrency(float $amount, string $currencyOrigin, string $currencyToConvert): float
+    public function convertCurrency(string $amount, string $currencyOrigin, string $currencyToConvert): string
     {
         $currencyOrigin = strtoupper($currencyOrigin);
         $currencyToConvert = strtoupper($currencyToConvert);
@@ -90,32 +99,27 @@ class CurrencyService
         }
 
         if (!isset($this->exchangeRates[$currencyOrigin][$currencyToConvert])) {
-            // Try via EUR
-            if (isset($this->exchangeRates[$currencyOrigin]['EUR']) && isset($this->exchangeRates['EUR'][$currencyToConvert])) {
-                $eurAmount = $amount * $this->exchangeRates[$currencyOrigin]['EUR'];
-                $converted = $eurAmount * $this->exchangeRates['EUR'][$currencyToConvert];
-                return $this->roundUpToCurrency($converted, $currencyToConvert);
-            }
-
             throw new UndefinedExchangeRateException($currencyOrigin, $currencyToConvert);
         }
 
-        $converted = $amount * $this->exchangeRates[$currencyOrigin][$currencyToConvert];
+        $converted = bcmul($amount, (string) $this->exchangeRates[$currencyOrigin][$currencyToConvert], 4);
         return $this->roundUpToCurrency($converted, $currencyToConvert);
     }
 
-    public function roundUpToCurrency(float $value, string $currency): float
+    public function roundUpToCurrency(string $value, string $currency): string
     {
         $decimals = $this->currencyConfig->getPrecision($currency);
-        
+
         if (!is_int($decimals) || $decimals < 0) {
             throw new InvalidCurrencySettings('Invalid precision for currency: ' . $currency);
         }
-        
-        $factor = pow(10, $decimals);
+        $factor = bcpow('10', (string) $decimals);
+        $scaled = bcmul($value, $factor, $decimals+1);
 
-        // Round up to the nearest decimal place
-        return ceil($value * $factor) / $factor;
+        // Use float to ceil, then convert back to string
+        $ceiled = (string) ceil((float) $scaled);
+
+        return bcdiv($ceiled, $factor, $decimals);
     }
 
 }

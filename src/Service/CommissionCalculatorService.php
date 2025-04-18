@@ -33,7 +33,7 @@ class CommissionCalculatorService
     }
 
 
-    public function getCommissionValue(): float
+    public function getCommissionValue(): string
     {
         return $this->calculateCommission($this->operationEntity);
     }
@@ -47,7 +47,7 @@ class CommissionCalculatorService
         $currency = $operationEntity->getCurrency();
 
         if ($operationType === "deposit") {
-            return $this->calculateDepositCommission($amount);
+            return $this->calculateDepositCommission($amount, $currency);
         }
 
         if ($operationType === "withdraw") {
@@ -57,12 +57,13 @@ class CommissionCalculatorService
         return null;
     }
 
-    private function calculateDepositCommission(float $amount): float
+    private function calculateDepositCommission(string $amount, string $currency): string
     {
-        return $amount * $this->commissionConfig->getCommissionRateDeposit();
+        $commissionValue = bcmul($amount, $this->commissionConfig->getCommissionRateDeposit(), 4);
+        return $this->currencyService->roundUpToCurrency($commissionValue, $currency);
     }
 
-    private function calculateWithdrawCommission(float $amount, string $userType, string $currency): float
+    private function calculateWithdrawCommission(string $amount, string $userType, string $currency): string
     {
         if ($userType === "business") {
             return $this->calculateBusinessWithdrawCommission($amount, $currency);
@@ -75,25 +76,21 @@ class CommissionCalculatorService
         throw new InvalidUserTypeException($userType);
     }
 
-    private function calculateBusinessWithdrawCommission(float $amount, string $currency): float
+    private function calculateBusinessWithdrawCommission($amount, string $currency): string
     {
-        $commissionValue = $amount * $this->commissionConfig->getCommissionRateWithdrawBusiness();
+        $commissionValue = bcmul($amount, $this->commissionConfig->getCommissionRateWithdrawBusiness(), 4);
         return $this->currencyService->roundUpToCurrency($commissionValue, $currency);
     }
 
-    private function calculatePrivateWithdrawCommission(float $amount, string $currency): float
+    private function calculatePrivateWithdrawCommission(string $amount, string $currency): string
     {
         $taxableAmount = $this->getTaxableAmount($amount, $currency);
-
-
-        $commissionValue = $taxableAmount * $this->commissionConfig->getCommissionRateWithdrawPrivate();
-
-
-
+        $commissionValue = bcmul($taxableAmount, $this->commissionConfig->getCommissionRateWithdrawPrivate(), 4);
+        
         return $this->currencyService->roundUpToCurrency($commissionValue, $currency);
     }
 
-    private function getTaxableAmount(float $amount, string $currency): float
+    private function getTaxableAmount(string $amount, string $currency): string
     {
 
         $startDate = clone $this->operationEntity->getDate();
@@ -105,12 +102,12 @@ class CommissionCalculatorService
             $endDate->modify('sunday this week'),
             $this->operationEntity->getOperationType()
         );
-
+        
         $withdrawWeekCount = $weekHistoryData['operationCount'];
-        $amountCurrencyDefault = $currency === $this->commissionConfig->getCurrencyDefault() ?
+        $amountCurrencyDefault = ($currency === $this->commissionConfig->getCurrencyDefault()) ?
             $amount :
             $this->currencyService->convertCurrency($amount, $currency, $this->commissionConfig->getCurrencyDefault());
-
+            
         if ($withdrawWeekCount > $this->commissionConfig->getFreeWithdrawCount()) {
             return $amount;
         }
@@ -123,23 +120,18 @@ class CommissionCalculatorService
             $currencyDefault
         );
 
-        $totalAmountCurrencyDefault = $weekHistoryTotalAmountCurrencyDefault + $amountCurrencyDefault;
-        
+        $totalAmountCurrencyDefault = bcadd($weekHistoryTotalAmountCurrencyDefault, $amountCurrencyDefault, 4);
         //check if the total amount in default currency is greater than the free withdraw limit
         if ($totalAmountCurrencyDefault > $this->commissionConfig->getFreeWithdrawLimit()) {
             return $weekHistoryTotalAmountCurrencyDefault > $this->commissionConfig->getFreeWithdrawLimit() ?
                 $amount :
                 $this->currencyService->convertCurrency(
-                    $totalAmountCurrencyDefault - $this->commissionConfig->getFreeWithdrawLimit(),
+                    bcsub($totalAmountCurrencyDefault, $this->commissionConfig->getFreeWithdrawLimit(), 4),
                     $currencyDefault,
                     $currency
                 );
         }
 
-        return 0;
+        return "0";
     }
-
-
-
-
 }

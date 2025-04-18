@@ -13,22 +13,22 @@ class CommissionConfig
     }
 
 
-    public function getCommissionRateDeposit(): float
+    public function getCommissionRateDeposit(): string
     {
-        return $this->commissionMap['commission_rate_deposit'] ?? 0.0; // Default value if not set
+        return $this->commissionMap['commission_rate_deposit'] ?? "0.0"; // Default value if not set
     }
-    public function getCommissionRateWithdrawPrivate(): float
+    public function getCommissionRateWithdrawPrivate(): string
     {
-        return (float) $this->commissionMap['commission_rate_withdraw_private'] ?? 0.0;
+        return (string) $this->commissionMap['commission_rate_withdraw_private'] ?? "0.0";
     }
-    public function getCommissionRateWithdrawBusiness(): float
+    public function getCommissionRateWithdrawBusiness(): string
     {
-        return (float) $this->commissionMap['commission_rate_withdraw_business'] ?? 0.0;
+        return (string) $this->commissionMap['commission_rate_withdraw_business'] ?? "0.0";
     }
 
-    public function getFreeWithdrawLimit(): float
+    public function getFreeWithdrawLimit(): string
     {
-        return (float) $this->commissionMap['free_withdraw_limit'] ?? 0.0;
+        return (string) $this->commissionMap['free_withdraw_limit'] ?? "0.0";
     }
 
     public function getFreeWithdrawCount(): int

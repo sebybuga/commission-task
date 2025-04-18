@@ -9,7 +9,7 @@ use PharIo\Manifest\InvalidUrlException;
 
 class ApiConfig
 {
-        
+       
     private $apiUrlMap;
 
     public function __construct(DataProviderInterface $provider)

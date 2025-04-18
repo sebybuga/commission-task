@@ -23,6 +23,7 @@ class OperationRepository
     }
 
     /**
+     *  Get all operations.
      * @return OperationEntity[]
      */
     public function getAll(): array
@@ -38,7 +39,7 @@ class OperationRepository
      * @param DateTime $start
      * @param DateTime $end
      * @param string|null $operationType
-     * @return array{operations: OperationEntity[], total: float}
+     * @return array{operations: OperationEntity[], total: string}
      */
     public function getByDateRangeAndOperationTypeWithTotal(int $userId, DateTime $startDate, DateTime $endDate, string $operationType): array
     {
@@ -48,45 +49,10 @@ class OperationRepository
                 $matchesUserId = $entity->userId === $userId;
                 $inDateRange = $entity->date >= $startDate && $entity->date <= $endDate;
                 $matchesType = $entity->operationType === $operationType;
-//                 echo "User match: " . var_export($matchesUserId, true) . "\n";
-//                 echo "Date match: " . var_export($inDateRange, true) . "\n";
-//                 echo "Type match: " . var_export($matchesType, true) . "\n\n";
-//                 echo "Entity: " . $entity->date->format('Y-m-d H:i:s') . "\n";
-// echo "Start : " . $startDate->format('Y-m-d H:i:s') . "\n";
-// echo "End   : " . $endDate->format('Y-m-d H:i:s') . "\n";
         
                 return $matchesUserId && $inDateRange && $matchesType;
             }
         );
-
-        // print_r($this->storage);
-        // if (!empty($this->storage)) {
-        //     echo "Storage is not empty\n";
-        //     // print_r(array_values($this->storage)[0]->date->format('Y-m-d'));
-        //     // echo (array_values($this->storage)[0]->date >= $startDate) . "\n";
-        //     // echo (array_values($this->storage)[0]->date <= $endDate) . "\n";
-        //     // echo (array_values($this->storage)[0]->operationType === $operationType) . "\n";
-        //     // echo (array_values($this->storage)[0]->userId === $userId) . "\n";
-
-        // } else {
-        //     echo "Storage is empty\n";
-        // }
-
-        // echo "Filtered operations:\n";
-        // print_r($filtered);
-
-
-
-   
     }
-
-    public function delete(int $id): void
-    {
-        unset($this->storage[$id]);
-    }
-
-    public function clear(): void
-    {
-        $this->storage = [];
-    }
+    
 }

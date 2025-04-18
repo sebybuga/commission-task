@@ -11,7 +11,7 @@ use Homework\CommissionTask\Service\OperationService;
 use Homework\CommissionTask\Config\ApiConfig;
 
 
-require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/vendor/autoload.php';
 
 if ($argc < 2) {
     echo "Usage: php script.php <input_file>\n";
@@ -30,6 +30,7 @@ if (!$handle) {
 }
 
 $showInputValues = (isset($argv[2]) && $argv[2] === '--show-input-values') ? true : false;
+$useApi = (isset($argv[2]) && $argv[2] === '--use-exchange-test') ? false : true;
 
 $repositoryOperation = new OperationRepository();
 
@@ -42,14 +43,16 @@ while (($data = fgetcsv($handle)) !== false) {
 
     $operationEntity = new OperationEntity($data);
 
-    $currencyProvider = new JsonDataProvider(__DIR__ . '/../config/currencies.json');
+    $currencyProvider = new JsonDataProvider(__DIR__ . '/config/currencies.json');
     $currencyConfig = new CurrencyConfig($currencyProvider);
-    $commissionProvider = new JsonDataProvider(__DIR__ . '/../config/commissions.json');
+    
+    $commissionProvider = new JsonDataProvider(__DIR__ . '/config/commissions.json');
     $commissionConfig = new CommissionConfig($commissionProvider);
-    $apiProvider = new JsonDataProvider(__DIR__ . '/../config/api.json');
+    
+    $apiProvider = new JsonDataProvider(__DIR__ . '/config/api.json');
     $apiConfig = new ApiConfig($apiProvider);
 
-    $currencyService = new CurrencyService($currencyConfig, $apiConfig);
+    $currencyService = new CurrencyService($currencyConfig, $apiConfig, $useApi);
     $operationService = new OperationService($repositoryOperation, $commissionConfig, $currencyService);
 
     // Validate input data

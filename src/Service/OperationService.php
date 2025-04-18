@@ -37,22 +37,22 @@ class OperationService
         $filtered = $this->repository->getByDateRangeAndOperationTypeWithTotal($userId, $startDate, $endDate, $operationType);
         $totalAmount = array_reduce(
             $filtered,
-            function (float $sum, OperationEntity $entity): float {
+            function (string $sum, OperationEntity $entity): string {
                 if ($entity->getCurrency() == $this->commissionConfig->getCurrencyDefault()) {
-                    return $sum + $entity->amount;
+                    return bcadd( $sum,  $entity->amount,4);
                 }
-                return $sum + $this->currencyService->convertCurrency(
+                return bcadd($sum, $this->currencyService->convertCurrency(
                     $entity->getAmount(),
                     $entity->getCurrency(),
                     $this->commissionConfig->getCurrencyDefault()
-                );
+                ), 2);
             },
-            0.0
+            "0"
         );
 
         return [
             'operationCount' => count($filtered),
-            'totalAmount' => (float) $totalAmount,
+            'totalAmount' => (string) $totalAmount,
         ];
 
 
@@ -76,8 +76,8 @@ class OperationService
             throw new InvalidArgumentException("Invalid operation type.");
         }
 
-        if (!is_float($operation->amount)) {
-            throw new InvalidArgumentException("Amount must be a float.");
+        if (!preg_match('/^\d+(\.\d{1,2})?$/', $operation->amount)) {
+            throw new InvalidArgumentException("Amount must be a numeric value.");
         }
 
         if (!is_string($operation->currency) || strlen($operation->currency) !== 3) {
