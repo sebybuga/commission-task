@@ -5,16 +5,19 @@ declare(strict_types=1);
 namespace Homework\CommissionTask\Service;
 
 use Homework\CommissionTask\Config\CurrencyConfig;
+use Homework\CommissionTask\Config\TestExchangeRatesConfig;
 use Homework\CommissionTask\Exception\UndefinedExchangeRateException;
 use Homework\CommissionTask\Exception\InvalidExchangeRatesFormatException;
 use Homework\CommissionTask\Exception\ExchangeRateLoadException;
 use Homework\CommissionTask\Config\ApiConfig;
 
 use Homework\CommissionTask\Exception\InvalidCurrencySettings;
+use Homework\CommissionTask\Exception\CurrencyConversionException;
 
 class CurrencyService
 {
     private $currencyConfig;
+    private $testExchangeRatesConfig;
     private $apiUrl;
 
     /**
@@ -35,10 +38,16 @@ class CurrencyService
     private $exchangeRates;
 
 
-    public function __construct(CurrencyConfig $currencyConfig, ApiConfig $apiConfig, bool $useApi = true)
+    public function __construct(
+            CurrencyConfig $currencyConfig, 
+            ApiConfig $apiConfig, 
+            TestExchangeRatesConfig $testExchangeRatesConfig, 
+            bool $useApi = true
+        )
     {
 
         $this->currencyConfig = $currencyConfig;
+        $this->testExchangeRatesConfig = $testExchangeRatesConfig;
         $this->apiUrl = $this->buildExchangeRateUrl(
             $apiConfig->getExchangeApiUrl(),
             $apiConfig->getAccessKey(),
@@ -53,19 +62,10 @@ class CurrencyService
     {
         if (!$useApi) {
             // Mock exchange rates for testing purposes
-            $this->exchangeRates = [
-                'EUR' => [
-                    'USD' => 1.1497,
-                    'JPY' => 129.53,
-                ],
-                'USD' => [
-                    'EUR' => 1 / 1.1497,
-                ],
-                'JPY' => [
-                    'EUR' => 1 / 129.53,
-                ],
-            ];
-
+            $this->exchangeRates = $this->testExchangeRatesConfig->getExchangeRates();
+            if (!$this->exchangeRates) {
+                throw new UndefinedExchangeRateException('Test exchange rates not defined', "");
+            }
             return;
         }
         // Load exchange rates from API
@@ -91,19 +91,27 @@ class CurrencyService
 
     public function convertCurrency(string $amount, string $currencyOrigin, string $currencyToConvert): string
     {
-        $currencyOrigin = strtoupper($currencyOrigin);
-        $currencyToConvert = strtoupper($currencyToConvert);
+        try {
 
-        if ($currencyOrigin === $currencyToConvert) {
-            return $this->roundUpToCurrency($amount, $currencyToConvert);
+            $currencyOrigin = strtoupper($currencyOrigin);
+            $currencyToConvert = strtoupper($currencyToConvert);
+
+            if ($currencyOrigin === $currencyToConvert) {
+                return $this->roundUpToCurrency($amount, $currencyToConvert);
+            }
+
+            if (!isset($this->exchangeRates[$currencyOrigin][$currencyToConvert])) {
+                throw new UndefinedExchangeRateException($currencyOrigin, $currencyToConvert);
+            }
+
+            $converted = bcmul($amount, (string) $this->exchangeRates[$currencyOrigin][$currencyToConvert], 4);
+            return $this->roundUpToCurrency($converted, $currencyToConvert);
+
+
+        } catch (UndefinedExchangeRateException $e) {
+            throw new CurrencyConversionException("Error converting currency: " . $e->getMessage());
         }
 
-        if (!isset($this->exchangeRates[$currencyOrigin][$currencyToConvert])) {
-            throw new UndefinedExchangeRateException($currencyOrigin, $currencyToConvert);
-        }
-
-        $converted = bcmul($amount, (string) $this->exchangeRates[$currencyOrigin][$currencyToConvert], 4);
-        return $this->roundUpToCurrency($converted, $currencyToConvert);
     }
 
     public function roundUpToCurrency(string $value, string $currency): string
@@ -114,7 +122,7 @@ class CurrencyService
             throw new InvalidCurrencySettings('Invalid precision for currency: ' . $currency);
         }
         $factor = bcpow('10', (string) $decimals);
-        $scaled = bcmul($value, $factor, $decimals+1);
+        $scaled = bcmul($value, $factor, $decimals + 1);
 
         // Use float to ceil, then convert back to string
         $ceiled = (string) ceil((float) $scaled);
