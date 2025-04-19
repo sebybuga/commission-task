@@ -43,7 +43,7 @@ php commission-task input.csv
 
 ## Running Test
 Run scriptTest to verify that input values produce the expected output values:
-php tests/scriptTest.php
+./vendor/phpunit/phpunit/phpunit tests/scriptTest.php
 
 Run test for a specific test class:
 ./vendor/phpunit/phpunit/phpunit tests/Service/CommissionCalculatorServiceTest.php
