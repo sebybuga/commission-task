@@ -45,12 +45,17 @@ php commission-task input.csv
 Run scriptTest to verify that input values produce the expected output values:
 php tests/scriptTest.php
 
+Run test for a specific test class:
+./vendor/phpunit/phpunit/phpunit tests/Service/CommissionCalculatorServiceTest.php
+
 
 ## Config files
 config/currencies.json – Default currency decimal places
 config/commissions.json – Commission rate config
 config/api.json – API settings for exchange rates
 config/test-exchange-rates.json – Exchange rate values for testing
+
+*Adding a new currency: update currencies.json and test-exchange-rates.json with the new currency and its exchange rate.
 
 ## Exchange Rates
 By default, the app fetches live currency exchange rates from the URL specified in api.json. 
